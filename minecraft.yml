@@ -38,7 +38,7 @@
         mode: '0444'                                                                                                            owner: minecraft                                                                                                        group: minecraft
 
     - name: determine jar url
-      shell: awk -F'{{ " }}' '/\.jar/ {print $2; exit}' /opt/minecraft/tmp/mc_jar_url.html
+      shell: awk -F'\"' '/\.jar/ {print $2; exit}' /opt/minecraft/tmp/mc_jar_url.html
       register: mc_jar_url
 
     - name: get jar
