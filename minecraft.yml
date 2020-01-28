@@ -31,17 +31,24 @@
         - /opt/minecraft/server
         - /opt/minecraft/tmp
 
-    - name: get jar download page
+    - name: determine if jar downloaded
+      stat:
+        path: /opt/minecraft/server/server.jar
+      register: mc_jar
+
+    - name: get jar download page if not downloaded or mc_update = True
       get_url:
         url: https://www.minecraft.net/en-us/download/server
         dest: /opt/minecraft/tmp/mc_jar_url.html
         mode: '0444'
         owner: minecraft
         group: minecraft
+      when: mc_jar.stat.exists == False or mc_update == True
 
-    - name: determine jar url
+    - name: determine jar url 
       shell: awk -F '"' '/\.jar/ {print $2; exit}' /opt/minecraft/tmp/mc_jar_url.html
       register: mc_jar_url
+      when: mc_jar.stat.exists == False or mc_update == True
 
     - name: get jar
       get_url:
@@ -50,6 +57,7 @@
         mode: '0444'
         owner: minecraft
         group: minecraft
+      when: mc_jar.stat.exists == False or mc_update == True
 
     - name: determine if eula exists
       stat:
@@ -93,3 +101,27 @@
         enabled: yes
         daemon_reload: yes
         name: minecraft
+      register: mc_started
+
+    - name: restart minecraft service if not started previously
+      systemd:
+        state: restarted
+        name: minecraft
+      when: mc_started.changed 
+
+    - name: backup script
+      copy:
+        src: backup.sh
+        dest: /usr/local/bin/minecraft_backup
+        mode: '0500'
+        owner: minecraft
+        group: minecraft
+
+    - name: backup cron
+      cron:
+        name: "minecraft backup"
+        minute: "0"
+        hour: "*/3"
+        state: present
+        user: minecraft
+        job: /usr/local/bin/minecraft_backup
