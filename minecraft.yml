@@ -108,11 +108,11 @@
         name: minecraft
       register: mc_started
 
-    - name: restart minecraft service if not started previously
+    - name: restart minecraft service if not started previously or mc_update
       systemd:
         state: restarted
         name: minecraft
-      when: mc_started.changed 
+      when: mc_started.changed or mc_update
 
     - name: backup script
       copy:
