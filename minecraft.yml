@@ -36,6 +36,11 @@
         path: /opt/minecraft/server/server.jar
       register: mc_jar
 
+    - name: set mc_update = False when not defined
+      set_fact:
+        mc_update: False
+      when: mc_update is not defined
+
     - name: get jar download page if not downloaded or mc_update = True
       get_url:
         url: https://www.minecraft.net/en-us/download/server
