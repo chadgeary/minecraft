@@ -1,5 +1,5 @@
 # Minecraft
-A playbook for installing / starting minecraft on a CentOS 7 server with backup cron.
+A playbook for installing / starting minecraft on RHEL/CentOS 7 server with backup cron.
 
 # Deploy
 ```
