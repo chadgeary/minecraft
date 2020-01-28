@@ -48,12 +48,12 @@
         mode: '0444'
         owner: minecraft
         group: minecraft
-      when: mc_jar.stat.exists == False or mc_update == True
+      when: mc_jar.stat.exists == False and mc_update == True
 
     - name: determine jar url 
       shell: awk -F '"' '/\.jar/ {print $2; exit}' /opt/minecraft/tmp/mc_jar_url.html
       register: mc_jar_url
-      when: mc_jar.stat.exists == False or mc_update == True
+      when: mc_jar.stat.exists == False and mc_update == True
 
     - name: get jar
       get_url:
@@ -62,7 +62,7 @@
         mode: '0444'
         owner: minecraft
         group: minecraft
-      when: mc_jar.stat.exists == False or mc_update == True
+      when: mc_jar.stat.exists == False and mc_update == True
 
     - name: determine if eula exists
       stat:
