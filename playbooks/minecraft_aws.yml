@@ -1,0 +1,129 @@
+---
+- name: minecraft
+  hosts: localhost
+  become: True
+  become_user: root
+  tasks:
+
+    - name: java
+      package:
+        name: "{% if ansible_os_family == 'RedHat' %}java-1.8.0-openjdk-headless{% elif ansible_os_family == 'Debian' %}openjdk-8-jdk{% endif %}"
+        state: present
+
+    - name: minecraft user
+      user:
+        name: minecraft
+        shell: /sbin/nologin
+
+    - name: minecraft dirs
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0700'
+        owner: minecraft
+        group: minecraft
+      with_items:
+        - /opt/minecraft
+        - /opt/minecraft/backups
+        - /opt/minecraft/server
+        - /opt/minecraft/tmp
+
+    - name: determine if jar downloaded
+      stat:
+        path: /opt/minecraft/server/server.jar
+      register: mc_jar
+
+    - name: set mc_update = False when not defined
+      set_fact:
+        mc_update: False
+      when: mc_update is not defined
+
+    - name: get jar download page if not downloaded or mc_update = True
+      get_url:
+        url: https://www.minecraft.net/en-us/download/server
+        dest: /opt/minecraft/tmp/mc_jar_url.html
+        mode: '0444'
+        owner: minecraft
+        group: minecraft
+      when: mc_jar.stat.exists == False or mc_update
+
+    - name: determine jar url 
+      shell: awk -F '"' '/\.jar/ {print $2; exit}' /opt/minecraft/tmp/mc_jar_url.html
+      register: mc_jar_url
+      when: mc_jar.stat.exists == False or mc_update
+
+    - name: get jar
+      get_url:
+        url: "{{ mc_jar_url.stdout }}"
+        dest: /opt/minecraft/server/server.jar
+        mode: '0444'
+        owner: minecraft
+        group: minecraft
+      when: mc_jar.stat.exists == False or mc_update
+
+    - name: determine if eula exists
+      stat:
+        path: /opt/minecraft/server/eula.txt
+      register: mc_eula_file
+
+    - name: run jar when eula not exists (max 60 seconds)
+      shell:
+        chdir: /opt/minecraft/server/
+        cmd: timeout 60 java -Xmx1024M -Xms1024M -jar server.jar nogui
+      ignore_errors: yes
+      when: mc_eula_file.stat.exists == False
+
+    - name: agree to eula
+      lineinfile:
+        path: /opt/minecraft/server/eula.txt
+        line: 'eula=true'
+        mode: '0444'
+        owner: minecraft
+        group: minecraft
+
+    - name: minecraft systemd unit file
+      template:
+        src: minecraft.service
+        dest: /etc/systemd/system/minecraft.service
+        mode: '0444'
+        owner: root
+        group: root
+
+    - name: set server.properties file
+      template:
+        src: server.properties
+        dest: /opt/minecraft/server/server.properties
+        mode: '0600'
+        owner: minecraft
+        group: minecraft
+
+    - name: start/enable minecraft service
+      systemd:
+        state: started
+        enabled: yes
+        daemon_reload: yes
+        name: minecraft
+      register: mc_started
+
+    - name: restart minecraft service if not started previously or mc_update
+      systemd:
+        state: restarted
+        name: minecraft
+      when: mc_started.changed or mc_update
+
+    - name: backup script
+      copy:
+        src: backup.sh
+        dest: /usr/local/bin/minecraft_backup
+        mode: '0500'
+        owner: minecraft
+        group: minecraft
+
+    - name: backup cron - every 3rd hour (8 times daily)
+      cron:
+        name: "minecraft backup"
+        minute: "0"
+        hour: "*/3"
+        state: present
+        user: minecraft
+        job: /usr/local/bin/minecraft_backup
