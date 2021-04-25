@@ -135,9 +135,6 @@ Edit the vars file (aws.tfvars) to customize the deployment, especially:
 # instance_key
 # a public SSH key for SSH access to the instance via user `ubuntu`.
 # cat ~/.ssh/id_rsa.pub
-
-# kms_manager
-# The AWS username (not root) granted access to read the Wireguard VPN configuration files in S3.
 ```
 
 # Post-Deployment
